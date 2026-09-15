@@ -47,15 +47,18 @@ ZigbeeXYLight::ZigbeeXYLight(uint8_t endpoint) : ZigbeeEP(endpoint) {
   esp_zb_cluster_list_add_color_control_cluster(_cluster_list, color_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
   // Manufacturer-specific cluster for WS2812B effects.
-  // Attribute 0x0000: effect (0..5), attribute 0x0001: speed (1..100).
+  // Mark the attributes themselves manufacturer-specific as well. ZHA/zigpy
+  // then sends the manufacturer code from the node descriptor (0x1234) in the
+  // ZCL frame, which matches how ESP Zigbee handles attributes on 0xFC00.
+  const uint8_t effect_access = ESP_ZB_ZCL_ATTR_MANUF_SPEC | ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE;
   esp_zb_attribute_list_t *effect_cluster = esp_zb_zcl_attr_list_create(ZIGBEE_EFFECT_CLUSTER_ID);
   esp_zb_custom_cluster_add_custom_attr(effect_cluster, ZIGBEE_EFFECT_ATTR_ID,
                                         ESP_ZB_ZCL_ATTR_TYPE_U8,
-                                        ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE,
+                                        effect_access,
                                         &_effect);
   esp_zb_custom_cluster_add_custom_attr(effect_cluster, ZIGBEE_SPEED_ATTR_ID,
                                         ESP_ZB_ZCL_ATTR_TYPE_U8,
-                                        ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE,
+                                        effect_access,
                                         &_effectSpeed);
   esp_zb_cluster_list_add_custom_cluster(_cluster_list, effect_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
