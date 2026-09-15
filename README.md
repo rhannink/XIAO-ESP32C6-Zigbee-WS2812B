@@ -35,9 +35,10 @@ Tested target configuration:
 
 ## Files
 
-- `XiaoZigbeeXYLight.ino` - main Arduino sketch and WS2812B driver
+- `XiaoZigbeeXYLight.ino` - main Arduino sketch and WS2812B effects
 - `ZigbeeXYLight.h` - custom endpoint class
 - `ZigbeeXYLight.cpp` - Zigbee clusters and attribute handling
+- `zha_quirks/remco_ws2812b.py` - Home Assistant ZHA v2 custom quirk
 
 ## Wiring
 
@@ -53,22 +54,9 @@ External GND -------------- GND
               +------------ XIAO GND
 ```
 
-Do not power a full LED strip directly from a GPIO pin.
-
 ## Home Assistant / ZHA pairing
 
-1. Flash the sketch.
-2. In Home Assistant open ZHA and select **Add device**.
-3. Power/restart the XIAO.
-4. Wait for `ZIGBEE CONNECTED` in Serial Monitor at 115200 baud.
-
-The light should support:
-
-- On/off
-- Brightness
-- XY/RGB color
-
-Expected Home Assistant attribute:
+The light supports On/off, Brightness and XY/RGB color. Expected Home Assistant attribute:
 
 ```yaml
 supported_color_modes:
@@ -77,22 +65,67 @@ supported_color_modes:
 
 There should be no `color_temp` mode.
 
+## WS2812B effects
+
+Firmware effects:
+
+| Value | Effect |
+|---:|---|
+| 0 | Solid |
+| 1 | Rainbow |
+| 2 | Rainbow Cycle |
+| 3 | Color Wipe |
+| 4 | Theater Chase |
+| 5 | Pulse |
+
+Effect speed is 1-100.
+
+The firmware exposes manufacturer-specific cluster `0xFC00` on endpoint 10:
+
+- attribute `0x0000`: effect
+- attribute `0x0001`: effect speed
+
+## ZHA custom quirk
+
+The repository contains `zha_quirks/remco_ws2812b.py`. It matches:
+
+- Manufacturer: `Remco`
+- Model: `XIAO-C6-WS2812B-XY-FX-v2`
+- Endpoint: 10
+- Cluster: `0xFC00`
+
+The quirk is intended to expose an **LED effect** select entity and **Effect speed** number entity in Home Assistant.
+
+### Install
+
+Copy:
+
+```text
+zha_quirks/remco_ws2812b.py
+```
+
+to:
+
+```text
+/config/custom_zha_quirks/remco_ws2812b.py
+```
+
+Then add/update Home Assistant `configuration.yaml`:
+
+```yaml
+zha:
+  custom_quirks_path: /config/custom_zha_quirks/
+```
+
+Restart Home Assistant completely after installing or changing the quirk.
+
+If the device was already paired before the quirk was installed, remove it from ZHA, factory-reset the ESP32-C6 and pair it again so the device signature and entities are rebuilt.
+
 ## Factory reset
 
-Hold the XIAO **BOOT** button for 3 seconds.
+Hold the XIAO **BOOT** button for 3 seconds. The current firmware explicitly uses GPIO9 for the XIAO ESP32-C6 BOOT button.
 
-While holding the button, the WS2812B strip flashes red. After 3 seconds it stays red briefly and the Zigbee network data is erased with `Zigbee.factoryReset()`.
-
-If the button is released before 3 seconds, the reset is cancelled and the previous light state is restored.
-
-## Re-pairing after endpoint changes
-
-ZHA caches the endpoint and cluster information discovered during pairing. After changing the Zigbee endpoint configuration:
-
-1. Remove the old device from ZHA.
-2. Flash the new firmware.
-3. Perform the 3-second BOOT factory reset.
-4. Pair the device again as a new ZHA device.
+While holding the button, the WS2812B strip flashes red. At 3 seconds it stays red and `Zigbee.factoryReset()` erases the Zigbee network data.
 
 ## License
 
