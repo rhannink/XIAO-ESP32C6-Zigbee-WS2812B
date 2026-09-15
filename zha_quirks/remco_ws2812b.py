@@ -1,7 +1,5 @@
 """ZHA quirk for Remco XIAO ESP32-C6 WS2812B XY light effects."""
 
-import enum
-
 import zigpy.types as t
 from zigpy.quirks import CustomCluster
 from zigpy.quirks.v2 import QuirkBuilder
@@ -48,8 +46,13 @@ class RemcoEffectCluster(CustomCluster):
     }
 
 
+# Actual signature currently reported by ZHA:
+# manufacturer: Remco
+# model: XIAO-C6-WS2812B-XY-FX-v1
+# endpoint 10, profile 0x0104, device type 0x0102
+# input clusters: 0x0000, 0x0003, 0x0006, 0x0008, 0x0300, 0xFC00
 (
-    QuirkBuilder("Remco", "XIAO-C6-WS2812B-XY-FX-v2")
+    QuirkBuilder("Remco", "XIAO-C6-WS2812B-XY-FX-v1")
     .replaces(RemcoEffectCluster, endpoint_id=ENDPOINT_ID)
     .enum(
         attribute_name="effect",
