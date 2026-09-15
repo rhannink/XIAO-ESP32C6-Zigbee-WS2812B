@@ -46,11 +46,6 @@ class RemcoEffectCluster(CustomCluster):
     }
 
 
-# Actual signature currently reported by ZHA:
-# manufacturer: Remco
-# model: XIAO-C6-WS2812B-XY-FX-v1
-# endpoint 10, profile 0x0104, device type 0x0102
-# input clusters: 0x0000, 0x0003, 0x0006, 0x0008, 0x0300, 0xFC00
 (
     QuirkBuilder("Remco", "XIAO-C6-WS2812B-XY-FX-v1")
     .replaces(RemcoEffectCluster, endpoint_id=ENDPOINT_ID)
@@ -59,6 +54,7 @@ class RemcoEffectCluster(CustomCluster):
         enum_class=LedEffect,
         cluster_id=EFFECT_CLUSTER_ID,
         endpoint_id=ENDPOINT_ID,
+        translation_key="led_effect",
         fallback_name="LED effect",
     )
     .number(
@@ -68,6 +64,7 @@ class RemcoEffectCluster(CustomCluster):
         min_value=1,
         max_value=100,
         step=1,
+        translation_key="effect_speed",
         fallback_name="Effect speed",
     )
     .add_to_registry()
