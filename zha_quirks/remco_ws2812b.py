@@ -21,13 +21,7 @@ class LedEffect(t.enum8):
 
 
 class RemcoEffectCluster(CustomCluster):
-    """Custom WS2812B effect cluster implemented by the ESP32-C6 firmware.
-
-    The cluster ID itself is manufacturer-specific (0xFC00), but the firmware
-    registers attributes 0x0000 and 0x0001 as normal custom-cluster attributes.
-    Therefore the ZCL writes must NOT set the manufacturer-specific attribute
-    flag/manufacturer code.
-    """
+    """Manufacturer-specific WS2812B effect cluster."""
 
     cluster_id = EFFECT_CLUSTER_ID
     ep_attribute = "remco_effects"
@@ -39,7 +33,7 @@ class RemcoEffectCluster(CustomCluster):
             type=LedEffect,
             access=foundation.ZCLAttributeAccess.Read
             | foundation.ZCLAttributeAccess.Write,
-            is_manufacturer_specific=False,
+            is_manufacturer_specific=True,
         ),
         SPEED_ATTR_ID: foundation.ZCLAttributeDef(
             id=SPEED_ATTR_ID,
@@ -47,7 +41,7 @@ class RemcoEffectCluster(CustomCluster):
             type=t.uint8_t,
             access=foundation.ZCLAttributeAccess.Read
             | foundation.ZCLAttributeAccess.Write,
-            is_manufacturer_specific=False,
+            is_manufacturer_specific=True,
         ),
     }
 
