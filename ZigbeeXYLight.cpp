@@ -8,6 +8,8 @@ ZigbeeXYLight::ZigbeeXYLight(uint8_t endpoint) : ZigbeeEP(endpoint) {
   _level = 254;
   _x = 20494;
   _y = 21561;
+  _effect = EFFECT_SOLID;
+  _effectSpeed = 50;
   _callback = nullptr;
 
   _cluster_list = esp_zb_zcl_cluster_list_create();
@@ -33,7 +35,7 @@ ZigbeeXYLight::ZigbeeXYLight(uint8_t endpoint) : ZigbeeEP(endpoint) {
   esp_zb_attribute_list_t *level_cluster = esp_zb_level_cluster_create(&level_cfg);
   esp_zb_cluster_list_add_level_cluster(_cluster_list, level_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
-  // Custom Color Control cluster: XY only. No Color Temperature attributes.
+  // XY-only Color Control. Deliberately no Color Temperature attributes.
   esp_zb_color_cluster_cfg_t color_cfg = {};
   color_cfg.current_x = _x;
   color_cfg.current_y = _y;
@@ -41,9 +43,21 @@ ZigbeeXYLight::ZigbeeXYLight(uint8_t endpoint) : ZigbeeEP(endpoint) {
   color_cfg.options = 0;
   color_cfg.enhanced_color_mode = ZIGBEE_COLOR_MODE_CURRENT_X_Y;
   color_cfg.color_capabilities = ZIGBEE_COLOR_CAPABILITY_X_Y;
-
   esp_zb_attribute_list_t *color_cluster = esp_zb_color_control_cluster_create(&color_cfg);
   esp_zb_cluster_list_add_color_control_cluster(_cluster_list, color_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+
+  // Manufacturer-specific cluster for WS2812B effects.
+  // Attribute 0x0000: effect (0..5), attribute 0x0001: speed (1..100).
+  esp_zb_attribute_list_t *effect_cluster = esp_zb_zcl_attr_list_create(ZIGBEE_EFFECT_CLUSTER_ID);
+  esp_zb_custom_cluster_add_custom_attr(effect_cluster, ZIGBEE_EFFECT_ATTR_ID,
+                                        ESP_ZB_ZCL_ATTR_TYPE_U8,
+                                        ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE,
+                                        &_effect);
+  esp_zb_custom_cluster_add_custom_attr(effect_cluster, ZIGBEE_SPEED_ATTR_ID,
+                                        ESP_ZB_ZCL_ATTR_TYPE_U8,
+                                        ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE,
+                                        &_effectSpeed);
+  esp_zb_cluster_list_add_custom_cluster(_cluster_list, effect_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
   _ep_config = {
     .endpoint = _endpoint,
@@ -53,19 +67,17 @@ ZigbeeXYLight::ZigbeeXYLight(uint8_t endpoint) : ZigbeeEP(endpoint) {
   };
 }
 
-void ZigbeeXYLight::onLightChange(xyLightCallback callback) {
-  _callback = callback;
-}
+void ZigbeeXYLight::onLightChange(xyLightCallback callback) { _callback = callback; }
 
 bool ZigbeeXYLight::getLightState() const { return _state; }
 uint8_t ZigbeeXYLight::getLightLevel() const { return _level; }
 uint16_t ZigbeeXYLight::getLightX() const { return _x; }
 uint16_t ZigbeeXYLight::getLightY() const { return _y; }
+uint8_t ZigbeeXYLight::getEffect() const { return _effect; }
+uint8_t ZigbeeXYLight::getEffectSpeed() const { return _effectSpeed; }
 
 void ZigbeeXYLight::lightChanged() {
-  if (_callback) {
-    _callback(_state, _level, _x, _y);
-  }
+  if (_callback) _callback(_state, _level, _x, _y);
 }
 
 void ZigbeeXYLight::zbAttributeSet(const esp_zb_zcl_set_attr_value_message_t *message) {
@@ -96,12 +108,22 @@ void ZigbeeXYLight::zbAttributeSet(const esp_zb_zcl_set_attr_value_message_t *me
       lightChanged();
       return;
     }
-
     if (message->attribute.id == ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_Y_ID &&
         message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U16) {
       _y = *(uint16_t *)message->attribute.data.value;
       lightChanged();
       return;
+    }
+  }
+
+  if (message->info.cluster == ZIGBEE_EFFECT_CLUSTER_ID &&
+      message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U8) {
+    uint8_t value = *(uint8_t *)message->attribute.data.value;
+    if (message->attribute.id == ZIGBEE_EFFECT_ATTR_ID) {
+      _effect = (value <= EFFECT_PULSE) ? value : EFFECT_SOLID;
+      lightChanged();
+    } else if (message->attribute.id == ZIGBEE_SPEED_ATTR_ID) {
+      _effectSpeed = constrain(value, 1, 100);
     }
   }
 }
